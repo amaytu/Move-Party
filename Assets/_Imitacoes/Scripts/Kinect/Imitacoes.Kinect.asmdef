@@ -1,0 +1,21 @@
+{
+    "name": "Imitacoes.Kinect",
+    "rootNamespace": "Imitacoes.Kinect",
+    "references": [
+        "Imitacoes.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor",
+        "WindowsStandalone64"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "KINECT_V1"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

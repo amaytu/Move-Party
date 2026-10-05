@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10562dfcbb306d84ca3a540097f5b634, type: 3}
+  m_Name: ThemeCatalog
+  m_EditorClassIdentifier: Imitacoes.Runtime::Imitacoes.Config.ThemeCatalog
+  themes:
+  - id: 67
+    displayText: Six Seven
+    icon: {fileID: 0}
+    enabled: 1
+  - id: robo
+    displayText: "Imite um rob\xF4"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: macaco
+    displayText: Imite um macaco
+    icon: {fileID: 0}
+    enabled: 1
+  - id: "Dan\xE7a"
+    displayText: Passino do Jamal
+    icon: {fileID: 0}
+    enabled: 1
+  - id: MJ
+    displayText: Imite o Michael Jackson
+    icon: {fileID: 0}
+    enabled: 1
+  - id: jogador
+    displayText: Imite jogador de futebol
+    icon: {fileID: 0}
+    enabled: 1
+  - id: bailarina
+    displayText: Imite uma bailarina
+    icon: {fileID: 0}
+    enabled: 1
+  - id: zumbi
+    displayText: Imite um zumbi
+    icon: {fileID: 0}
+    enabled: 1
+  - id: guitarrista
+    displayText: Imite um guitarrista de rock
+    icon: {fileID: 0}
+    enabled: 1
+  - id: elefante
+    displayText: Imite um elefante
+    icon: {fileID: 0}
+    enabled: 1

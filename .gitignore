@@ -1,0 +1,55 @@
+# ---- Unity: pastas geradas (a Unity recria ao abrir o projeto) ----
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Backups automáticos de cena
+/[Aa]ssets/_Recovery/
+/[Aa]ssets/_Recovery.meta
+
+# Gravações de teste salvas pelo jogo
+/[Aa]ssets/StreamingAssets/Recordings/*.json
+/[Aa]ssets/StreamingAssets/Recordings/*.json.meta
+
+# Asset Store tools
+/[Aa]ssets/AssetStoreTools*
+
+# ---- IDEs (gerados pela Unity) ----
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# ---- Builds ----
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+
+# ---- Sistema ----
+.DS_Store
+Thumbs.db
+desktop.ini
