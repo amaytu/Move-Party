@@ -42,7 +42,7 @@ namespace Imitacoes.Scoring
     ///    1 = oposta), com pesos por grupo, confiança do rastreamento e ênfase nos ossos que o Mestre movimenta.
     /// 3. Dynamic Time Warping com janela de Sakoe-Chiba: alinha as sequências tolerando atraso e
     ///    diferença de ritmo. Resultado = custo médio por passo do caminho ótimo.
-    /// 4. Nota = curva(custo / distanceForZeroScore) × 100 — ajuste a curva no Inspector.
+    /// 4. Nota = tabela distância → nota (interpolação linear) — ajuste no Inspector.
     /// Opcionalmente testa também a versão espelhada e fica com a melhor.
     /// </summary>
     [AddComponentMenu("Imitações/Motion Comparer")]
@@ -79,12 +79,22 @@ namespace Imitacoes.Scoring
         private bool allowMirroredImitation = true;
 
         [Header("Nota")]
-        [SerializeField, Range(0.05f, 1f), Tooltip("Distância média que já vale nota zero.")]
-        private float distanceForZeroScore = 0.25f;
-        [SerializeField, Tooltip("X = distância / distanceForZeroScore (0..1); Y = nota (0..1).")]
-        private AnimationCurve scoreCurve = new AnimationCurve(
-            new Keyframe(0f, 1f), new Keyframe(0.12f, 0.85f), new Keyframe(0.24f, 0.65f),
-            new Keyframe(0.4f, 0.4f), new Keyframe(0.64f, 0.1f), new Keyframe(1f, 0f));
+        [SerializeField, Tooltip("Tabela distância → nota (X = distância média do DTW, Y = nota 0..100), " +
+            "em ordem crescente de distância. Entre dois pontos a nota é interpolada em linha reta. " +
+            "Calibrada com partidas reais: imitações boas ficaram entre 0,03 e 0,08 (→ 85–98) " +
+            "e as fracas perto de 0,15 (→ ~45).")]
+        private Vector2[] scoreTable =
+        {
+            new Vector2(0.00f, 100f),
+            new Vector2(0.04f, 97f),
+            new Vector2(0.07f, 88f),
+            new Vector2(0.10f, 78f),
+            new Vector2(0.13f, 60f),
+            new Vector2(0.16f, 40f),
+            new Vector2(0.20f, 22f),
+            new Vector2(0.26f, 8f),
+            new Vector2(0.32f, 0f),
+        };
 
         private readonly float[] groupWeights = new float[6];
         private float[] boneWeights = new float[0];
@@ -124,11 +134,22 @@ namespace Imitacoes.Scoring
             return new ComparisonResult(DistanceToScore(best), best, mirrored, trackedFraction);
         }
 
-        /// <summary>Converte a distância média do DTW em nota 0..100 pela curva.</summary>
+        /// <summary>Converte a distância média do DTW em nota 0..100 pela <see cref="scoreTable"/>.</summary>
         public float DistanceToScore(float averageDistance)
         {
-            float x = Mathf.Clamp01(averageDistance / distanceForZeroScore);
-            return Mathf.Round(Mathf.Clamp01(scoreCurve.Evaluate(x)) * 100f);
+            Vector2[] t = scoreTable;
+            if (t == null || t.Length == 0) return 0f;
+            if (averageDistance <= t[0].x) return Mathf.Round(Mathf.Clamp(t[0].y, 0f, 100f));
+
+            for (int i = 1; i < t.Length; i++)
+            {
+                if (averageDistance > t[i].x) continue;
+                float span = t[i].x - t[i - 1].x;
+                float k = span > 0f ? (averageDistance - t[i - 1].x) / span : 1f;
+                return Mathf.Round(Mathf.Clamp(Mathf.Lerp(t[i - 1].y, t[i].y, k), 0f, 100f));
+            }
+
+            return Mathf.Round(Mathf.Clamp(t[t.Length - 1].y, 0f, 100f));
         }
 
         // ------------------------------------------------------------------ DTW

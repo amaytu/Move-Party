@@ -36,6 +36,9 @@ namespace Imitacoes.Visual
         /// </summary>
         public abstract void SetSlot(BodySlot slot, bool followPlayerX);
 
+        /// <summary>Coroa dourada na cabeça (líder da partida). Bonecos sem suporte ignoram.</summary>
+        public virtual void SetCrown(bool on) { }
+
         public void SetVisible(bool visible)
         {
             if (gameObject.activeSelf != visible) gameObject.SetActive(visible);

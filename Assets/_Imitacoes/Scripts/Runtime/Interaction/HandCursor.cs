@@ -163,6 +163,9 @@ namespace Imitacoes.Interaction
                 }
             }
 
+            // Só aparece quando há botão na tela: durante as imitações o cursor some.
+            if (GestureButton.VisibleCount <= 0) active = false;
+
             IsActive = active;
             wasActive = active;
 

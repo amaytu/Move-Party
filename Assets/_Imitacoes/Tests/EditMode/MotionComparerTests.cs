@@ -28,13 +28,35 @@ namespace Imitacoes.Tests
         [TearDown]
         public void TearDown() => Object.DestroyImmediate(go);
 
+        /// <summary>Compara e escreve o resultado no log do teste (útil para calibrar a tabela de notas).</summary>
+        private ComparisonResult Cmp(MotionClip master, MotionClip attempt,
+            [System.Runtime.CompilerServices.CallerMemberName] string caller = "")
+        {
+            ComparisonResult r = comparer.Compare(master, attempt);
+            TestContext.WriteLine($"{caller}: {r}");
+            Debug.Log($"[Calibração] {caller}: {r}");
+            return r;
+        }
+
         // ------------------------------------------------------------------ Casos
+
+        [Test]
+        public void TabelaDeNota_Calibrada()
+        {
+            // Imitação muito boa beira 100; boa fica perto de 80; ruim cai rápido.
+            Assert.AreEqual(100f, comparer.DistanceToScore(0f));
+            Assert.GreaterOrEqual(comparer.DistanceToScore(0.04f), 95f);
+            Assert.AreEqual(78f, comparer.DistanceToScore(0.10f));
+            Assert.LessOrEqual(comparer.DistanceToScore(0.16f), 40f);
+            Assert.AreEqual(0f, comparer.DistanceToScore(0.32f));
+            Assert.AreEqual(0f, comparer.DistanceToScore(1f));
+        }
 
         [Test]
         public void MovimentoIdentico_NotaMaxima()
         {
             MotionClip master = Clip(t => Wave(t));
-            float score = comparer.Compare(master, Clip(t => Wave(t))).Score;
+            float score = Cmp(master, Clip(t => Wave(t))).Score;
             Assert.GreaterOrEqual(score, 95f);
         }
 
@@ -43,7 +65,7 @@ namespace Imitacoes.Tests
         {
             MotionClip master = Clip(t => Wave(t));
             MotionClip late = Clip(t => Wave(t - 0.5f)); // começou meio segundo depois
-            float score = comparer.Compare(master, late).Score;
+            float score = Cmp(master, late).Score;
             // Curva exigente: atraso de 0,5 s ainda perde pontos, mas o DTW evita que a nota despenque.
             Assert.GreaterOrEqual(score, 55f, "O DTW deveria tolerar o atraso.");
         }
@@ -53,7 +75,7 @@ namespace Imitacoes.Tests
         {
             MotionClip master = Clip(t => Wave(t));
             MotionClip other = Clip(t => Wave(t), scale: 1.2f, offset: new Vector3(0.6f, 0.1f, -0.5f));
-            float score = comparer.Compare(master, other).Score;
+            float score = Cmp(master, other).Score;
             Assert.GreaterOrEqual(score, 95f, "A normalização deveria ignorar altura e posição.");
         }
 
@@ -62,7 +84,7 @@ namespace Imitacoes.Tests
         {
             MotionClip master = Clip(t => Wave(t));
             MotionClip idle = Clip(t => (0.15f, 0.15f));
-            float score = comparer.Compare(master, idle).Score;
+            float score = Cmp(master, idle).Score;
             Assert.LessOrEqual(score, 40f);
         }
 
@@ -72,8 +94,8 @@ namespace Imitacoes.Tests
             MotionClip master = Clip(t => (2.8f, 2.8f));      // braços para cima
             MotionClip similar = Clip(t => (2.5f, 2.5f));     // quase igual
             MotionClip opposite = Clip(t => (0.1f, 0.1f));    // braços para baixo
-            float good = comparer.Compare(master, similar).Score;
-            float bad = comparer.Compare(master, opposite).Score;
+            float good = Cmp(master, similar).Score;
+            float bad = Cmp(master, opposite).Score;
             Assert.Greater(good, bad + 30f);
         }
 
@@ -82,7 +104,7 @@ namespace Imitacoes.Tests
         {
             MotionClip master = Clip(t => (0.15f, 2.8f));   // só o braço direito levantado
             MotionClip mirror = Clip(t => (2.8f, 0.15f));   // só o esquerdo (como num espelho)
-            ComparisonResult result = comparer.Compare(master, mirror);
+            ComparisonResult result = Cmp(master, mirror);
             Assert.GreaterOrEqual(result.Score, 90f);
             Assert.IsTrue(result.Mirrored);
         }
@@ -92,8 +114,8 @@ namespace Imitacoes.Tests
         {
             // Mestre gira o corpo de 0° a 70° e volta; braços parados.
             MotionClip master = Clip(t => (0.3f, 0.3f), yaw: t => 35f - 35f * Mathf.Cos(t * Mathf.PI * 0.8f));
-            float same = comparer.Compare(master, Clip(t => (0.3f, 0.3f), yaw: t => 35f - 35f * Mathf.Cos(t * Mathf.PI * 0.8f))).Score;
-            float noTurn = comparer.Compare(master, Clip(t => (0.3f, 0.3f))).Score;
+            float same = Cmp(master, Clip(t => (0.3f, 0.3f), yaw: t => 35f - 35f * Mathf.Cos(t * Mathf.PI * 0.8f))).Score;
+            float noTurn = Cmp(master, Clip(t => (0.3f, 0.3f))).Score;
             Assert.GreaterOrEqual(same, 95f);
             Assert.LessOrEqual(noTurn, 92f, "Quem não girou deveria perder pontos.");
             Assert.Greater(same, noTurn + 5f);
@@ -105,7 +127,7 @@ namespace Imitacoes.Tests
             MotionClip master = Clip(t => Wave(t));
             var empty = new MotionClip(Fps);
             for (int i = 0; i < Fps * Duration; i++) empty.AddFrameCopy(new BodyFrame());
-            Assert.AreEqual(0f, comparer.Compare(master, empty).Score);
+            Assert.AreEqual(0f, Cmp(master, empty).Score);
         }
 
         // ------------------------------------------------------------------ Gerador de movimento

@@ -21,12 +21,12 @@ MonoBehaviour:
     displayText: "Imite um rob\xF4"
     icon: {fileID: 0}
     enabled: 1
-  - id: macaco
-    displayText: Imite um macaco
+  - id: tiktok
+    displayText: danca do tiktok
     icon: {fileID: 0}
     enabled: 1
   - id: "Dan\xE7a"
-    displayText: Passino do Jamal
+    displayText: Passinho do Jamal
     icon: {fileID: 0}
     enabled: 1
   - id: MJ
@@ -37,8 +37,8 @@ MonoBehaviour:
     displayText: Imite jogador de futebol
     icon: {fileID: 0}
     enabled: 1
-  - id: bailarina
-    displayText: Imite uma bailarina
+  - id: basquete
+    displayText: jogue basquete
     icon: {fileID: 0}
     enabled: 1
   - id: zumbi
@@ -49,7 +49,163 @@ MonoBehaviour:
     displayText: Imite um guitarrista de rock
     icon: {fileID: 0}
     enabled: 1
-  - id: elefante
-    displayText: Imite um elefante
+  - id: galinnha
+    displayText: imite uma galinha
+    icon: {fileID: 0}
+    enabled: 1
+  - id: memes
+    displayText: imite um meme
+    icon: {fileID: 0}
+    enabled: 1
+  - id: aviao
+    displayText: imite um aviao
+    icon: {fileID: 0}
+    enabled: 1
+  - id: carro
+    displayText: dirija um carro
+    icon: {fileID: 0}
+    enabled: 1
+  - id: imite um animal
+    displayText: imite um animal
+    icon: {fileID: 0}
+    enabled: 1
+  - id: vassoura
+    displayText: varra a casa
+    icon: {fileID: 0}
+    enabled: 1
+  - id: academia
+    displayText: "Levante peso na academia"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: polichinelo
+    displayText: "Faça polichinelos"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: goleiro
+    displayText: "Imite um goleiro defendendo um pênalti"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: bateria
+    displayText: "Toque bateria numa banda de rock"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: maestro
+    displayText: "Seja um maestro regendo a orquestra"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: superheroi
+    displayText: "Faça uma pose de super-herói"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: macaco
+    displayText: "Imite um macaco"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: pinguim
+    displayText: "Imite um pinguim"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: boxeador
+    displayText: "Imite um boxeador treinando"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: carate
+    displayText: "Lute caratê"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: guarda
+    displayText: "Seja um guarda de trânsito"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: corda
+    displayText: "Pule corda"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: dj
+    displayText: "Imite um DJ na balada"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: espantalho
+    displayText: "Imite um espantalho"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: torcedor
+    displayText: "Comemore um gol no estádio"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: mimico
+    displayText: "Seja um mímico preso numa caixa invisível"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: trex
+    displayText: "Imite um tiranossauro rex"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: arvore
+    displayText: "Seja uma árvore balançando no vento"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: escalada
+    displayText: "Escale uma parede"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: cozinheiro
+    displayText: "Imite um cozinheiro mexendo a panela"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: pintor
+    displayText: "Pinte uma parede"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: sapo
+    displayText: "Imite um sapo pulando"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: flamingo
+    displayText: "Imite um flamingo numa perna só"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: torcida
+    displayText: "Seja uma líder de torcida"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: ninja
+    displayText: "Imite um ninja"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: fisiculturista
+    displayText: "Imite um fisiculturista posando"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: ioga
+    displayText: "Faça uma aula de ioga"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: frio
+    displayText: "Imite alguém morrendo de frio"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: choque
+    displayText: "Imite alguém levando um choque"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: birra
+    displayText: "Imite uma criança fazendo birra"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: sinal
+    displayText: "Procure sinal de celular"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: nadar
+    displayText: "Nade de peito"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: palhaco
+    displayText: "Imite um palhaço"
+    icon: {fileID: 0}
+    enabled: 1
+  - id: gato
+    displayText: "Imite um gato se espreguiçando"
     icon: {fileID: 0}
     enabled: 1

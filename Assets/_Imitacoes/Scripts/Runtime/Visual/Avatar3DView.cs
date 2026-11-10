@@ -101,6 +101,84 @@ namespace Imitacoes.Visual
 
         public override void ResetReference() => hasReference = false;
 
+        // ------------------------------------------------------------------ Coroa
+
+        private static readonly Color Gold = new Color(1f, 0.78f, 0.12f);
+        private Transform crown;
+        private bool crownOn;
+
+        public override void SetCrown(bool on)
+        {
+            crownOn = on;
+            if (crown != null) crown.gameObject.SetActive(on);
+            else if (on && built) BuildCrown();
+        }
+
+        /// <summary>Coroa feita de primitivas, filha da cabeça (coordenadas da esfera de raio 0,5).</summary>
+        private void BuildCrown()
+        {
+            crown = new GameObject("Coroa").transform;
+            crown.SetParent(head, false);
+            crown.localPosition = new Vector3(0f, 0.45f, 0f);
+            crown.localRotation = Quaternion.Euler(-8f, 0f, 0f);
+            crown.localScale = Vector3.one * 1.4f;
+
+            Transform band = CrownPart("Aro", cylinderMesh);
+            band.localScale = new Vector3(0.74f, 0.09f, 0.74f);
+
+            const int points = 5;
+            for (int i = 0; i < points; i++)
+            {
+                float a = i * Mathf.PI * 2f / points;
+                Transform p = CrownPart("Ponta", sphereMesh);
+                p.localPosition = new Vector3(Mathf.Sin(a) * 0.33f, 0.16f, Mathf.Cos(a) * 0.33f);
+                p.localScale = new Vector3(0.13f, 0.2f, 0.13f);
+            }
+            Transform jewel = CrownPart("Joia", sphereMesh);
+            jewel.localPosition = new Vector3(0f, 0.02f, 0.37f);
+            jewel.localScale = Vector3.one * 0.12f;
+            SetRendererColor(jewel.GetComponent<Renderer>(), new Color(0.9f, 0.15f, 0.25f));
+
+            crown.gameObject.SetActive(crownOn);
+        }
+
+        private Transform CrownPart(string partName, Mesh mesh)
+        {
+            var go = new GameObject(partName, typeof(MeshFilter), typeof(MeshRenderer));
+            go.transform.SetParent(crown, false);
+            go.GetComponent<MeshFilter>().sharedMesh = mesh;
+            var r = go.GetComponent<MeshRenderer>();
+            r.sharedMaterial = bodyMaterial;
+            r.shadowCastingMode = ShadowCastingMode.On;
+            SetRendererColor(r, Gold);
+            return go.transform;
+        }
+
+        // ------------------------------------------------------------------ Cópias (pódio)
+
+        /// <summary>Novo boneco com os mesmos materiais e medidas (as peças são criadas no primeiro Render).</summary>
+        public Avatar3DView CreateCopy(string copyName, Transform parent)
+        {
+            var go = new GameObject(copyName);
+            go.transform.SetParent(parent, false);
+            var copy = go.AddComponent<Avatar3DView>();
+            copy.bodyMaterial = bodyMaterial;
+            copy.eyeMaterial = eyeMaterial;
+            copy.platformMaterial = platformMaterial;
+            copy.glowMaterial = glowMaterial;
+            copy.limbThickness = limbThickness;
+            copy.torsoWidth = torsoWidth;
+            copy.torsoDepth = torsoDepth;
+            copy.headSize = headSize;
+            copy.handSize = handSize;
+            copy.footSize = footSize;
+            copy.platformRadius = platformRadius;
+            copy.hipHeight = hipHeight;
+            copy.referenceFollow = referenceFollow;
+            copy.fadeTarget = fadeTarget;
+            return copy;
+        }
+
         public override void SetSlot(BodySlot slot, bool follow)
         {
             float x = slot == BodySlot.Left ? -slotOffset : slot == BodySlot.Right ? slotOffset : 0f;
@@ -353,6 +431,7 @@ namespace Imitacoes.Visual
             rimRenderer = rim.GetComponent<Renderer>();
 
             ApplyColors();
+            if (crownOn) BuildCrown();
         }
 
         private Transform CreatePart(string partName, Mesh mesh, Material material, bool isLimb, bool castShadows = true)

@@ -21,7 +21,25 @@ namespace Imitacoes.Game
         RecordStart,
         RecordEnd,
         Score,
-        Victory
+        Victory,
+        TimeUp,
+        Urgency,
+        ScoreCount,
+        ScoreGreat,
+        ScoreGood,
+        ScoreBad,
+        Select,
+        Start,
+        RecordScratch,
+        ButtonHover,
+        CrowdApplause,
+        CrowdCheer,
+        CrowdBoo,
+        CrowdLaugh,
+        CrowdCrickets,
+        Confetti,
+        Crown,
+        SurpriseRule
     }
 
     /// <summary>
@@ -74,6 +92,7 @@ namespace Imitacoes.Game
         private GameState currentState;
         [SerializeField] private bool showDebugOverlay = true;
 
+        private GameAudio gameAudio;
         private GameStateMachine machine;
         private readonly MatchState match = new MatchState();
         private Color liveColor = Color.white;
@@ -90,17 +109,190 @@ namespace Imitacoes.Game
         public MotionComparer Comparer => comparer;
         public MotionClipPlayer ClipPlayer => clipPlayer;
         public MatchState Match => match;
+        public GameAudio Audio => gameAudio;
         public GameState CurrentState => machine != null ? machine.Current : GameState.TelaInicial;
         public bool ShortcutGesturesEnabled => settings.ShortcutGesturesEnabled;
 
         public void GoTo(GameState state) => machine.ChangeState(state);
 
         /// <summary>Começa uma partida com os N primeiros jogadores do elenco.</summary>
-        public void StartMatch(int playerCount)
+        /// <param name="showHowToPlay">Mostra a tela "Como jogar" antes (não no "Jogar novamente").</param>
+        public void StartMatch(int playerCount, bool showHowToPlay = true)
         {
             lastPlayerCount = Mathf.Clamp(playerCount, PlayerRoster.MinPlayers, PlayerRoster.MaxPlayers);
+            match.SurpriseMode = surpriseMode;
             match.StartMatch(roster.Take(lastPlayerCount), themes.Themes);
-            GoTo(GameState.SorteioTema);
+            GoTo(showHowToPlay ? GameState.ComoJogar : GameState.SorteioTema);
+        }
+
+        // ------------------------------------------------------------------ Modo "Regras surpresa"
+
+        private bool surpriseMode;
+
+        /// <summary>Modo extra escolhido na seleção de jogadores (vale até mudar de novo).</summary>
+        public bool SurpriseMode => surpriseMode;
+
+        private void ToggleSurpriseMode()
+        {
+            surpriseMode = !surpriseMode;
+            ui.SetSurpriseToggle(surpriseMode);
+            if (surpriseMode) PlaySound(GameSound.SurpriseRule);
+        }
+
+        // ------------------------------------------------------------------ Plateia
+
+        /// <summary>A nota terminou de subir na tela: a "plateia" reage.</summary>
+        private void OnScoreRevealed(float score)
+        {
+            if (score >= ScoreReaction.ConfettiThreshold)
+            {
+                PlaySound(GameSound.ScoreGreat);
+                PlaySound(GameSound.Confetti);
+                gameAudio.Play(GameSound.CrowdCheer, 0.9f);
+                gameAudio.Play(GameSound.CrowdApplause, 0.7f);
+            }
+            else if (score >= 50f)
+            {
+                PlaySound(GameSound.ScoreGood);
+                gameAudio.Play(GameSound.CrowdApplause, 0.6f);
+            }
+            else if (score >= 20f)
+            {
+                PlaySound(GameSound.ScoreBad);
+                gameAudio.Play(GameSound.CrowdBoo, 0.7f);
+            }
+            else if (score > 0f)
+            {
+                PlaySound(GameSound.ScoreBad);
+                gameAudio.Play(GameSound.CrowdLaugh, 0.9f);
+            }
+            else
+            {
+                gameAudio.Play(GameSound.CrowdCrickets, 0.9f);
+            }
+        }
+
+        // ------------------------------------------------------------------ Pódio
+
+        private PodiumStage podium;
+
+        /// <summary>Monta o pódio 3D. False se a cena usa bonecos 2D (aí o placar usa a lista).</summary>
+        public bool ShowPodium(System.Collections.Generic.IReadOnlyList<ScoreRow> ranking)
+        {
+            if (!(ui.LiveView is Avatar3DView template)) return false;
+            if (podium == null) podium = PodiumStage.Create(template, (RectTransform)ui.transform, ui.Font);
+            podium.Show(ranking);
+            return true;
+        }
+
+        public void HidePodium()
+        {
+            if (podium != null) podium.Hide();
+        }
+
+        // ------------------------------------------------------------------ Coroa
+
+        /// <summary>Coroa no boneco do líder: no ao vivo durante a vez dele e no replay se o Mestre lidera.</summary>
+        private void UpdateCrowns()
+        {
+            GameState s = CurrentState;
+            bool performerOnScreen = s == GameState.Posicionamento || s == GameState.ContagemMestre || s == GameState.GravandoMestre
+                                     || s == GameState.ContagemImitador || s == GameState.GravandoImitador;
+            if (ui.LiveView != null) ui.LiveView.SetCrown(performerOnScreen && match.IsLeader(match.CurrentPerformer));
+            if (ui.ClipView != null) ui.ClipView.SetCrown(s == GameState.Replay && match.IsLeader(match.Master));
+        }
+
+        // ------------------------------------------------------------------ Pausa
+
+        [Header("Pausa")]
+        [SerializeField, Min(0.3f), Tooltip("Tempo com os braços cruzados no peito para abrir a pausa.")]
+        private float pauseGestureSeconds = 1.2f;
+
+        private bool paused;
+        private float crossedArmsTime;
+
+        public bool IsPaused => paused;
+
+        /// <summary>
+        /// Pausa só fora das gravações e contagens (lá o movimento pode ter braços cruzados de propósito)
+        /// e fora das telas que já têm botões.
+        /// </summary>
+        private bool PauseAllowed()
+        {
+            GameState s = CurrentState;
+            return s == GameState.SorteioTema || s == GameState.Posicionamento || s == GameState.Replay
+                   || s == GameState.ResultadoRodada || s == GameState.ComoJogar;
+        }
+
+        public void OpenPause()
+        {
+            if (paused || !PauseAllowed()) return;
+            paused = true;
+            crossedArmsTime = 0f;
+            if (clipPlayer != null) clipPlayer.enabled = false; // congela o replay
+
+            string skipLabel = null;
+            if (CurrentState == GameState.Posicionamento && match.CurrentPerformer != null)
+                skipLabel = $"Pular {match.CurrentPerformer.DisplayName}";
+
+            ui.OpenPause(liveColor == Color.white ? neutralAccent : liveColor, skipLabel);
+            PlaySound(GameSound.Select);
+        }
+
+        public void ClosePause()
+        {
+            if (!paused) return;
+            paused = false;
+            crossedArmsTime = 0f;
+            if (clipPlayer != null) clipPlayer.enabled = true;
+            ui.ClosePause();
+            gestures.ResetAll(); // a mão que apertou o botão não começa a vez sem querer
+        }
+
+        /// <summary>
+        /// Pula quem deveria estar na frente do sensor (ex.: a pessoa saiu da sala).
+        /// Mestre pulado = rodada pulada; imitador pulado = nota 0 nessa rodada.
+        /// </summary>
+        private void SkipCurrentPerformer()
+        {
+            ClosePause();
+            if (CurrentState != GameState.Posicionamento) return;
+
+            if (match.IsMasterTurn)
+            {
+                if (match.HasNextRound)
+                {
+                    match.NextRound();
+                    GoTo(GameState.SorteioTema);
+                }
+                else GoTo(GameState.PlacarFinal);
+                return;
+            }
+
+            match.SetImitatorScore(match.CurrentImitator, 0f, skipped: true);
+            GoTo(match.AdvanceImitator() ? GameState.Posicionamento : GameState.ResultadoRodada);
+        }
+
+        /// <summary>Braços cruzados na frente do peito (mão esquerda do lado direito e vice-versa).</summary>
+        private void UpdatePauseGesture(float dt)
+        {
+            BodyFrame b = body.ActiveBody;
+            bool crossed = false;
+            if (b != null && PauseAllowed())
+            {
+                JointData l = b.GetJoint(JointId.HandLeft), r = b.GetJoint(JointId.HandRight);
+                JointData mid = b.GetJoint(JointId.SpineMid), head = b.GetJoint(JointId.Head);
+                if (l.State == JointTrackingState.Tracked && r.State == JointTrackingState.Tracked && mid.IsUsable && head.IsUsable)
+                {
+                    float low = mid.Position.y, high = head.Position.y;
+                    crossed = l.Position.x > r.Position.x + 0.05f
+                              && l.Position.y > low && l.Position.y < high
+                              && r.Position.y > low && r.Position.y < high;
+                }
+            }
+
+            crossedArmsTime = crossed ? crossedArmsTime + dt : 0f;
+            if (crossedArmsTime >= pauseGestureSeconds) OpenPause();
         }
 
         /// <summary>Tudo na cor do jogador: moldura, faixa, cursor e esqueleto ao vivo.</summary>
@@ -130,7 +322,6 @@ namespace Imitacoes.Game
 
         public void PlaySound(GameSound sound)
         {
-            if (audioSource == null) return;
             AudioClip clip = sound switch
             {
                 GameSound.Tick => sounds.tick,
@@ -142,7 +333,9 @@ namespace Imitacoes.Game
                 GameSound.Victory => sounds.victory,
                 _ => null
             };
-            if (clip != null) audioSource.PlayOneShot(clip);
+            // Clipe arrastado no SoundBank tem prioridade; senão usa os sons do GameAudio (Resources/Audio).
+            if (clip != null && audioSource != null) audioSource.PlayOneShot(clip);
+            else if (gameAudio != null) gameAudio.Play(sound);
         }
 
         // ------------------------------------------------------------------ Ciclo de vida
@@ -159,9 +352,26 @@ namespace Imitacoes.Game
             GestureButton.MouseClickEnabled = settings.DebugKeysActive;
             body.MinTrackedRatio = settings.MinTrackedRatio;
 
+            // Versão final: esconde a seta do mouse (o jogo é todo por gestos).
+            if (!Application.isEditor && !Debug.isDebugBuild) Cursor.visible = false;
+
+            gameAudio = GetComponent<GameAudio>();
+            if (gameAudio == null) gameAudio = gameObject.AddComponent<GameAudio>();
+            gameAudio.Bind(this);
+
+            // Sons dos botões: ao começar a encher e ao confirmar (vale para qualquer GestureButton).
+            GestureButton.AnyHoverStarted += OnButtonHover;
+            GestureButton.AnySelected += OnButtonSelected;
+
+            // Reação da nota: tique enquanto o número sobe e som conforme a faixa no fim.
+            ui.ScoreReaction.Ticked += n => { if (n % 3 == 0) gameAudio.Play(GameSound.ScoreCount, 0.5f, 0.8f + n / 100f); };
+            ui.ScoreReaction.Finished += OnScoreRevealed;
+            ui.SurpriseToggled += ToggleSurpriseMode;
+
             machine = new GameStateMachine();
             machine.Register(GameState.TelaInicial, new TitleState(this));
             machine.Register(GameState.SelecaoJogadores, new PlayerSelectState(this));
+            machine.Register(GameState.ComoJogar, new HowToPlayState(this));
             machine.Register(GameState.SorteioTema, new ThemeDrawState(this));
             machine.Register(GameState.Posicionamento, new PositioningState(this));
             machine.Register(GameState.ContagemMestre, new CountdownState(this, isMaster: true));
@@ -176,6 +386,7 @@ namespace Imitacoes.Game
             {
                 currentState = next;
                 gestures.ResetAll(); // gesto que abriu esta tela não dispara nada na próxima
+                gameAudio.OnStateChanged(next);
             };
 
             gestures.GestureTriggered += OnGesture;
@@ -185,7 +396,11 @@ namespace Imitacoes.Game
                 int count = i + PlayerRoster.MinPlayers;
                 ui.PlayerCountButtons[i].onSelected.AddListener(() => StartMatch(count));
             }
-            ui.PlayAgainButton.onSelected.AddListener(() => StartMatch(lastPlayerCount));
+            ui.PlayAgainButton.onSelected.AddListener(() => StartMatch(lastPlayerCount, showHowToPlay: false));
+
+            ui.PauseMenu.ResumeRequested += ClosePause;
+            ui.PauseMenu.SkipRequested += SkipCurrentPerformer;
+            ui.PauseMenu.MenuRequested += () => { ClosePause(); GoTo(GameState.TelaInicial); };
             ui.MenuButton.onSelected.AddListener(() => GoTo(GameState.TelaInicial));
         }
 
@@ -194,6 +409,8 @@ namespace Imitacoes.Game
         private void OnDestroy()
         {
             if (gestures != null) gestures.GestureTriggered -= OnGesture;
+            GestureButton.AnyHoverStarted -= OnButtonHover;
+            GestureButton.AnySelected -= OnButtonSelected;
         }
 
         private void Update()
@@ -201,6 +418,16 @@ namespace Imitacoes.Game
             // Recompilação durante o Play recria o domínio e perde a máquina (não serializada).
             if (machine == null) return;
 
+            HandlePauseKeys();
+            if (paused)
+            {
+                // Estado congelado: só os avisos e o debug continuam.
+                UpdateWarnings();
+                UpdateDebugOverlay();
+                return;
+            }
+
+            UpdatePauseGesture(Time.unscaledDeltaTime);
             machine.Tick(Time.deltaTime);
             UpdateAutoFraming();
             UpdateWarnings();
@@ -211,6 +438,7 @@ namespace Imitacoes.Game
         private void LateUpdate()
         {
             if (machine == null) return;
+            UpdateCrowns();
 
             // Esqueleto ao vivo: sempre o jogador ativo, na cor do jogador da vez.
             BodyView live = ui.LiveView;
@@ -221,7 +449,25 @@ namespace Imitacoes.Game
             }
         }
 
-        private void OnGesture(GestureType gesture) => machine.CurrentHandler?.OnGesture(gesture);
+        private void OnButtonHover(GestureButton _) => PlaySound(GameSound.ButtonHover);
+        private void OnButtonSelected(GestureButton _) => PlaySound(GameSound.Select);
+
+        private void OnGesture(GestureType gesture)
+        {
+            if (paused) return;
+            machine.CurrentHandler?.OnGesture(gesture);
+        }
+
+        /// <summary>P (ou Esc na versão final) abre/fecha a pausa pelo teclado.</summary>
+        private void HandlePauseKeys()
+        {
+            Keyboard kb = Keyboard.current;
+            if (kb == null) return;
+            bool toggle = kb.pKey.wasPressedThisFrame || (!settings.DebugKeysActive && kb.escapeKey.wasPressedThisFrame);
+            if (!toggle) return;
+            if (paused) ClosePause();
+            else OpenPause();
+        }
 
         /// <summary>
         /// O motor do Kinect só pode se mexer fora das gravações (senão o movimento do
@@ -286,6 +532,7 @@ namespace Imitacoes.Game
                 if (kb.digit2Key.wasPressedThisFrame || kb.numpad2Key.wasPressedThisFrame) StartMatch(2);
                 else if (kb.digit3Key.wasPressedThisFrame || kb.numpad3Key.wasPressedThisFrame) StartMatch(3);
                 else if (kb.digit4Key.wasPressedThisFrame || kb.numpad4Key.wasPressedThisFrame) StartMatch(4);
+                else if (kb.sKey.wasPressedThisFrame) ToggleSurpriseMode();
             }
         }
 
@@ -304,7 +551,7 @@ namespace Imitacoes.Game
                 $"Estado: {CurrentState}\n" +
                 $"Fonte: {sourceInfo}  |  modo {body.Mode}\n" +
                 $"Corpos: {body.VisibleBodyCount}  |  estável {body.StableTrackingTime:0.0}s  |  {fpsSmoothed:0} fps\n" +
-                "Enter = confirmar  Esc = menu  F1 = info  F2 = fonte  (mock: Espaço = mãos pra cima, H = sair)");
+                "Enter = confirmar  Esc = menu  P = pausa  F1 = info  F2 = fonte  (mock: Espaço = mãos pra cima, H = sair)");
         }
 
         private bool ValidateReferences()

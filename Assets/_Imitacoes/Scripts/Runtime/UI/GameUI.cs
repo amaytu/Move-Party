@@ -130,8 +130,136 @@ namespace Imitacoes.UI
             SetActive(playerCountRoot, false);
             SetActive(finalButtonsRoot, false);
             SetActive(resultsRoot, false);
+            if (scoreReaction != null) scoreReaction.Hide();
+            if (howToPlay != null) howToPlay.Hide();
             titleFloats = false;
         }
+
+        // ------------------------------------------------------------------ API: telas montadas em tempo de execução
+
+        private HowToPlayPanel howToPlay;
+        private PauseMenu pauseMenu;
+
+        /// <summary>Sprite de círculo da skin (o mesmo usado nas formas arredondadas da cena).</summary>
+        internal Sprite CircleSprite => bannerBackground != null ? bannerBackground.sprite : null;
+        internal TMPro.TMP_FontAsset Font => titleText != null ? titleText.font : null;
+
+        // ---------------------------------------------------------- Modo "Regras surpresa" (seleção de jogadores)
+
+        private GestureButton surpriseToggle;
+
+        /// <summary>O botão "Regras surpresa" foi acionado.</summary>
+        public event Action SurpriseToggled;
+
+        public void ShowSurpriseToggle(bool show, bool on)
+        {
+            if (!show)
+            {
+                if (surpriseToggle != null) surpriseToggle.gameObject.SetActive(false);
+                return;
+            }
+            if (surpriseToggle == null)
+            {
+                UIFactory.Font = Font;
+                surpriseToggle = CreateButton("Botao Regras Surpresa", transform, new Vector2(0.5f, 0.1f),
+                    new Vector2(860f, 120f), 60f, "", 50f, CircleSprite);
+                UIFactory.Font = null;
+                surpriseToggle.onSelected.AddListener(() => SurpriseToggled?.Invoke());
+                BringCursorToFront();
+            }
+            surpriseToggle.gameObject.SetActive(true);
+            SetSurpriseToggle(on);
+        }
+
+        public void SetSurpriseToggle(bool on)
+        {
+            if (surpriseToggle == null) return;
+            surpriseToggle.Label = on ? "Regras surpresa: <color=#FFD23F>LIGADAS</color>" : "Regras surpresa: desligadas";
+            surpriseToggle.SetAccentColor(on ? new Color(1f, 0.82f, 0.25f) : new Color(0.35f, 0.8f, 1f));
+        }
+
+        // ---------------------------------------------------------- Placar final: prêmios e confete
+
+        private AwardsPanel awards;
+        private ConfettiRain confetti;
+
+        public void ShowAwards(IReadOnlyList<Imitacoes.Game.MatchState.Award> list)
+        {
+            if (awards == null) awards = AwardsPanel.Create(transform, Font, CircleSprite);
+            awards.Show(list);
+        }
+
+        public void HideAwards()
+        {
+            if (awards != null) awards.Hide();
+        }
+
+        /// <summary>Chuva de confete em tela cheia (atrás dos botões e do cursor).</summary>
+        public void BurstConfetti(int count, Vector2 origin)
+        {
+            if (confetti == null)
+            {
+                confetti = ConfettiRain.Create(transform);
+                confetti.transform.SetAsFirstSibling();
+            }
+            confetti.Burst(count, origin);
+        }
+
+        public void ShowHowToPlay(bool show)
+        {
+            if (!show)
+            {
+                if (howToPlay != null) howToPlay.Hide();
+                return;
+            }
+            if (howToPlay == null) howToPlay = HowToPlayPanel.Create(transform, Font, CircleSprite);
+            howToPlay.Show();
+        }
+
+        public PauseMenu PauseMenu
+        {
+            get
+            {
+                if (pauseMenu == null) pauseMenu = PauseMenu.Create(transform, Font, CircleSprite);
+                return pauseMenu;
+            }
+        }
+
+        public void OpenPause(Color accent, string skipLabel)
+        {
+            PauseMenu.Open(accent, skipLabel);
+            BringCursorToFront();
+        }
+
+        public void ClosePause()
+        {
+            if (pauseMenu != null) pauseMenu.Close();
+        }
+
+        /// <summary>O cursor da mão fica sempre por cima das telas criadas depois dele.</summary>
+        private void BringCursorToFront()
+        {
+            Transform cursor = transform.Find("Cursor");
+            if (cursor != null) cursor.SetAsLastSibling();
+        }
+
+        // ------------------------------------------------------------------ API: reação da nota
+
+        private ScoreReaction scoreReaction;
+
+        /// <summary>Reação da nota (montada na primeira vez que é usada).</summary>
+        public ScoreReaction ScoreReaction
+        {
+            get
+            {
+                if (scoreReaction == null)
+                    scoreReaction = ScoreReaction.Create(transform, titleText != null ? titleText.font : null);
+                return scoreReaction;
+            }
+        }
+
+        /// <summary>Número subindo até a nota, frase e (nota alta) confete.</summary>
+        public void ShowScoreReaction(float score, Color playerColor) => ScoreReaction.Show(score, playerColor);
 
         /// <summary>Cor de destaque (moldura, faixa, brilho, contagem) — a cor do jogador da vez.</summary>
         public void SetAccent(Color color, Color textOnColor)
@@ -223,6 +351,33 @@ namespace Imitacoes.UI
         public void ShowPlayerCountButtons(bool show) => SetActive(playerCountRoot, show);
 
         public void ShowFinalButtons(bool show) => SetActive(finalButtonsRoot, show);
+
+        private Vector2[] finalButtonsDefault; // anchor, size (Jogar novamente), anchor, size (Menu)
+
+        /// <summary>Com o pódio, os botões vão para a coluna da direita (embaixo dos prêmios).</summary>
+        public void SetFinalButtonsBesidePodium(bool beside)
+        {
+            if (playAgainButton == null || menuButton == null) return;
+            var again = (RectTransform)playAgainButton.transform;
+            var menu = (RectTransform)menuButton.transform;
+            if (finalButtonsDefault == null)
+                finalButtonsDefault = new[] { again.anchorMin, again.sizeDelta, menu.anchorMin, menu.sizeDelta };
+
+            if (beside)
+            {
+                again.anchorMin = again.anchorMax = new Vector2(0.8f, 0.2f);
+                again.sizeDelta = new Vector2(600f, 120f);
+                menu.anchorMin = menu.anchorMax = new Vector2(0.8f, 0.075f);
+                menu.sizeDelta = new Vector2(600f, 110f);
+            }
+            else
+            {
+                again.anchorMin = again.anchorMax = finalButtonsDefault[0];
+                again.sizeDelta = finalButtonsDefault[1];
+                menu.anchorMin = menu.anchorMax = finalButtonsDefault[2];
+                menu.sizeDelta = finalButtonsDefault[3];
+            }
+        }
 
         /// <summary>Barras de pontuação (resultado da rodada ou placar final).</summary>
         /// <param name="maxScore">Valor que enche a barra inteira.</param>
@@ -615,20 +770,25 @@ namespace Imitacoes.UI
 
         private static GestureButton CreateButton(string name, Transform parent, Vector2 anchor, Vector2 size, float radius,
             string text, float fontSize, UISkin skin)
+            => CreateButton(name, parent, anchor, size, radius, text, fontSize, skin.circle);
+
+        /// <summary>Botão de hover no estilo do jogo (também usado pelas telas montadas em tempo de execução).</summary>
+        public static GestureButton CreateButton(string name, Transform parent, Vector2 anchor, Vector2 size, float radius,
+            string text, float fontSize, Sprite circle)
         {
             RectTransform root = UIFactory.Rect(name, parent).Place(anchor, size);
 
             // Contorno de hover (atrás), sombra, fundo, preenchimento de progresso, texto.
-            Image outline = UIFactory.Rounded("Contorno Hover", root, Color.white, skin.circle, radius + 8f);
+            Image outline = UIFactory.Rounded("Contorno Hover", root, Color.white, circle, radius + 8f);
             outline.rectTransform.Stretch(-8f, -8f, -8f, -8f);
             outline.enabled = false;
-            UIFactory.Rounded("Sombra", root, Palette.Shadow, skin.circle, radius).rectTransform.Stretch(-4f, 4f, -4f, -16f);
-            Image bg = UIFactory.Rounded("Fundo", root, Palette.Card, skin.circle, radius);
+            UIFactory.Rounded("Sombra", root, Palette.Shadow, circle, radius).rectTransform.Stretch(-4f, 4f, -4f, -16f);
+            Image bg = UIFactory.Rounded("Fundo", root, Palette.Card, circle, radius);
             bg.rectTransform.Stretch();
 
             var mask = bg.gameObject.AddComponent<RectMask2D>(); // recorta o preenchimento nas bordas
             mask.softness = Vector2Int.zero;
-            Image fill = UIFactory.Rounded("Progresso", bg.transform, new Color(1f, 1f, 1f, 0.5f), skin.circle, radius);
+            Image fill = UIFactory.Rounded("Progresso", bg.transform, new Color(1f, 1f, 1f, 0.5f), circle, radius);
             fill.rectTransform.Stretch();
             fill.enabled = false;
 

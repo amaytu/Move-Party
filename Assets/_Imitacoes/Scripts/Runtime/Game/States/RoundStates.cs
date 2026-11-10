@@ -9,10 +9,13 @@ namespace Imitacoes.Game
 {
     /// <summary>
     /// Posicionamento: "Jogador X, posicione-se na frente do sensor".
-    /// Avança sozinho quando o corpo fica estável por ~1 s.
+    /// Quando o corpo aparece inteiro, o jogador LEVANTA A MÃO acima da cabeça para começar
+    /// (o mesmo gesto da tela inicial). Assim ninguém começa antes de estar pronto.
     /// </summary>
     public sealed class PositioningState : GameStateBase
     {
+        private const string RaiseHint = "Levante a mão acima da cabeça para começar";
+
         public PositioningState(GameManager game) : base(game) { }
 
         public override bool RequiresPlayer => true;
@@ -33,18 +36,33 @@ namespace Imitacoes.Game
 
         public override void Tick(float deltaTime)
         {
-            float needed = Game.Settings.StableTrackingSeconds;
-            float stable = Game.Body.StableTrackingTime;
-
             if (!Game.Body.HasActiveBody)
+            {
                 Game.UI.SetSubtitle("Fique de corpo inteiro, a uns 2 metros");
-            else if (stable > 0f)
-                Game.UI.SetSubtitle($"Isso! Fique assim... {Mathf.RoundToInt(Mathf.Clamp01(stable / needed) * 100f)}%");
-            else
-                Game.UI.SetSubtitle("Quase lá: deixe o corpo inteiro aparecer");
+                return;
+            }
 
-            if (stable >= needed)
-                Game.GoTo(Game.Match.IsMasterTurn ? GameState.ContagemMestre : GameState.ContagemImitador);
+            if (Game.Body.StableTrackingTime < Game.Settings.StableTrackingSeconds)
+            {
+                Game.UI.SetSubtitle("Quase lá: deixe o corpo inteiro aparecer");
+                return;
+            }
+
+            float progress = Game.Gestures.GetProgress(GestureType.AnyHandUp);
+            Game.UI.SetSubtitle(progress > 0f ? $"Segure a mão aí... {Mathf.RoundToInt(progress * 100f)}%" : RaiseHint);
+        }
+
+        public override void OnGesture(GestureType gesture)
+        {
+            if (gesture == GestureType.AnyHandUp && Game.Body.HasActiveBody) Begin();
+        }
+
+        public override void OnConfirm() => Begin();
+
+        private void Begin()
+        {
+            Game.PlaySound(GameSound.Start);
+            Game.GoTo(Game.Match.IsMasterTurn ? GameState.ContagemMestre : GameState.ContagemImitador);
         }
     }
 
@@ -64,7 +82,7 @@ namespace Imitacoes.Game
 
         public override void Enter()
         {
-            string theme = Game.Match.CurrentTheme.displayText;
+            string theme = Game.Match.ThemeLine;
             remaining = Game.Settings.CountdownSeconds;
             lastShown = -1;
 
@@ -104,7 +122,8 @@ namespace Imitacoes.Game
     /// </summary>
     public sealed class RecordingState : GameStateBase
     {
-        private const float FeedbackSeconds = 2.5f;
+        private const float MasterFeedbackSeconds = 2.5f;
+        private const float ImitatorFeedbackSeconds = 4.5f; // tempo para a reação da nota (contagem + frase + confete)
         private const float MinimumTrackedFraction = 0.3f;
 
         private readonly bool master;
@@ -129,7 +148,7 @@ namespace Imitacoes.Game
             feedbackTimer = 0f;
 
             Game.UI.HideAll();
-            Game.UI.ShowTitle(master ? "Crie o movimento!" : "Imite!", match.CurrentTheme.displayText);
+            Game.UI.ShowTitle(master ? "Crie o movimento!" : "Imite!", match.ThemeLine);
             Game.UI.SetSkeletonLayout(SkeletonLayout.LiveOnly); // sem o movimento do Mestre na tela
 
             Game.Recorder.RecordingFinished += OnRecordingFinished;
@@ -147,7 +166,7 @@ namespace Imitacoes.Game
             }
 
             feedbackTimer += deltaTime;
-            if (feedbackTimer >= FeedbackSeconds) Proceed();
+            if (feedbackTimer >= (master ? MasterFeedbackSeconds : ImitatorFeedbackSeconds)) Proceed();
         }
 
         public override void Exit()
@@ -161,7 +180,7 @@ namespace Imitacoes.Game
         {
             finished = true;
             Game.UI.HideRecording();
-            Game.PlaySound(GameSound.RecordEnd);
+            Game.Audio.TimeUp(); // música para e toca o alarme de tempo esgotado
 
             MatchState match = Game.Match;
             PlayerConfig performer = match.CurrentPerformer;
@@ -189,8 +208,9 @@ namespace Imitacoes.Game
             match.SetImitatorScore(performer, score);
             Debug.Log($"[Imitações] {performer.DisplayName} imitando '{match.CurrentTheme.id}': {result}");
 
-            Game.UI.ShowTitle($"{performer.DisplayName}: {score:0} pontos", Feedback(score));
-            Game.PlaySound(GameSound.Score);
+            Game.UI.ShowTitle($"Tempo esgotado!  {performer.DisplayName}");
+            Game.UI.SetSkeletonLayout(SkeletonLayout.Hidden); // o número fica sozinho no centro
+            Game.UI.ShowScoreReaction(score, performer.Color);
         }
 
         private void Proceed()
@@ -213,13 +233,6 @@ namespace Imitacoes.Game
             return (float)tracked / clip.FrameCount;
         }
 
-        private static string Feedback(float score)
-        {
-            if (score >= 85f) return "Perfeito!";
-            if (score >= 65f) return "Muito bom!";
-            if (score >= 40f) return "Quase lá!";
-            return "Boa tentativa!";
-        }
     }
 
     /// <summary>Replay: o movimento gravado do Mestre, na cor dele, para todos verem.</summary>
@@ -240,7 +253,7 @@ namespace Imitacoes.Game
             Game.SetPlayerAccent(master);
             Game.UI.HideAll();
             Game.UI.SetBanner($"Movimento do Mestre  -  {master.DisplayName}");
-            Game.UI.ShowTitle(match.CurrentTheme.displayText, "Observem com atenção!");
+            Game.UI.ShowTitle(match.ThemeLine, "Observem com atenção!");
             Game.UI.SetSkeletonLayout(SkeletonLayout.ClipOnly);
             Game.UI.ClipView.SetColor(master.Color, 1f);
             Game.ClipPlayer.Play(match.MasterClip);
@@ -281,14 +294,25 @@ namespace Imitacoes.Game
         public override void Enter()
         {
             MatchState match = Game.Match;
+            PlayerConfig leaderBefore = match.SoleLeader;
             match.FinishRound(Game.Settings.MasterScoringRule, Game.Settings.MasterScoreMultiplier);
+            PlayerConfig leaderAfter = match.SoleLeader;
 
             timer = 0f;
             Game.SetNeutralAccent();
             Game.UI.HideAll();
             Game.UI.SetSkeletonLayout(SkeletonLayout.Hidden);
             Game.UI.SetBanner($"Resultado da rodada {match.RoundIndex + 1} de {match.RoundCount}");
-            Game.UI.ShowTitle(match.CurrentTheme.displayText);
+            // Coroa trocou de dono: anuncia.
+            string crownNews = null;
+            if (leaderAfter != null && leaderAfter != leaderBefore)
+            {
+                crownNews = leaderBefore == null
+                    ? $"{leaderAfter.ColoredName} pegou a coroa!"
+                    : $"{leaderAfter.ColoredName} roubou a coroa de {leaderBefore.ColoredName}!";
+                Game.PlaySound(GameSound.Crown);
+            }
+            Game.UI.ShowTitle(match.ThemeLine, crownNews);
             Game.UI.ShowScores(match.GetRoundRows(), 100f, showPosition: false);
         }
 
@@ -341,9 +365,28 @@ namespace Imitacoes.Game
             Game.UI.SetSkeletonLayout(SkeletonLayout.Hidden);
             Game.UI.SetBanner(tie ? "Empate!" : $"{winner.DisplayName} venceu!");
             Game.UI.ShowTitle("Placar final");
-            Game.UI.ShowScores(ranking, Mathf.Max(1f, ranking[0].Score), showPosition: true);
+
+            // Pódio 3D com os bonecos dançando + prêmios; sem bonecos 3D, a lista de sempre.
+            bool podium = Game.ShowPodium(ranking);
+            Game.UI.SetFinalButtonsBesidePodium(podium);
+            if (podium)
+            {
+                Game.UI.ShowAwards(Game.Match.GetAwards());
+                if (ranking.Count > 3)
+                    Game.UI.SetSubtitle(string.Join("   ", ranking.GetRange(3, ranking.Count - 3)
+                        .ConvertAll(r => $"{ranking.IndexOf(r) + 1}º {r.Player.ColoredName} {r.Score:0}")));
+            }
+            else
+            {
+                Game.UI.ShowScores(ranking, Mathf.Max(1f, ranking[0].Score), showPosition: true);
+            }
+
             Game.UI.ShowFinalButtons(true);
+            Game.UI.BurstConfetti(160, new Vector2(-250f, 0f));
             Game.PlaySound(GameSound.Victory);
+            Game.PlaySound(GameSound.Confetti);
+            Game.PlaySound(GameSound.CrowdCheer);
+            Game.PlaySound(GameSound.CrowdApplause);
         }
 
         public override void Tick(float deltaTime)
@@ -358,6 +401,8 @@ namespace Imitacoes.Game
         {
             Game.UI.ShowFinalButtons(false);
             Game.UI.HideScores();
+            Game.UI.HideAwards();
+            Game.HidePodium();
         }
     }
 }

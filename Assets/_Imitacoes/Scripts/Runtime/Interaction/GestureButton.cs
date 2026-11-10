@@ -29,6 +29,19 @@ namespace Imitacoes.Interaction
         /// <summary>Permite clicar com o mouse (só no modo debug).</summary>
         public static bool MouseClickEnabled;
 
+        /// <summary>Quantos botões estão visíveis agora (o cursor da mão só aparece se houver algum).</summary>
+        public static int VisibleCount { get; private set; }
+
+        /// <summary>O cursor começou a encher um botão (som de "hover").</summary>
+        public static event System.Action<GestureButton> AnyHoverStarted;
+
+        /// <summary>Algum botão foi acionado (som de confirmação).</summary>
+        public static event System.Action<GestureButton> AnySelected;
+
+        // Zera o contador a cada Play (caso "Enter Play Mode" sem recarregar o domínio esteja ligado).
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => VisibleCount = 0;
+
         [SerializeField] private TMP_Text label;
         [SerializeField, Tooltip("Fundo/borda que muda de cor ao passar o cursor.")]
         private Graphic background;
@@ -94,6 +107,7 @@ namespace Imitacoes.Interaction
         {
             progress = 0f;
             locked = true;
+            AnySelected?.Invoke(this);
             onSelected?.Invoke();
         }
 
@@ -109,11 +123,13 @@ namespace Imitacoes.Interaction
             locked = true; // precisa sair e entrar de novo: evita acionar ao trocar de tela
             IsHovered = false;
             outsideTime = 0f;
+            VisibleCount++;
         }
 
         private void OnDisable()
         {
             if (hoverOwner == this) hoverOwner = null;
+            VisibleCount = System.Math.Max(0, VisibleCount - 1);
             if (rect != null) rect.localScale = baseScale;
         }
 
@@ -139,7 +155,9 @@ namespace Imitacoes.Interaction
 
             // Saída curta (tremor): continua em cima, mas o progresso só pausa.
             bool inGrace = !inside && IsHovered && outsideTime < exitGraceSeconds && cursor != null && cursor.IsActive;
+            bool wasHovered = IsHovered;
             IsHovered = inside || inGrace;
+            if (IsHovered && !wasHovered && !locked) AnyHoverStarted?.Invoke(this);
             if (IsHovered) hoverOwner = this;
             else if (hoverOwner == this) hoverOwner = null;
 

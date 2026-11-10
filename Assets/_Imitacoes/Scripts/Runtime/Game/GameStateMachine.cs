@@ -17,7 +17,8 @@ namespace Imitacoes.Game
         ContagemImitador,
         GravandoImitador,
         ResultadoRodada,
-        PlacarFinal
+        PlacarFinal,
+        ComoJogar
     }
 
     /// <summary>

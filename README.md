@@ -23,9 +23,10 @@ O Mestre ganha 10% da nota de cada imitador.
 2. [Instalação passo a passo para agentes de IA](#instalação-passo-a-passo-para-agentes-de-ia)
 3. [Como jogar](#como-jogar)
 4. [Controles](#controles)
-5. [Solução de problemas do Kinect](#solução-de-problemas-do-kinect)
-6. [Estrutura do projeto](#estrutura-do-projeto)
-7. [Algoritmo de pontuação](#algoritmo-de-pontuação)
+5. [Versão final (.exe)](#versão-final-exe)
+6. [Solução de problemas do Kinect](#solução-de-problemas-do-kinect)
+7. [Estrutura do projeto](#estrutura-do-projeto)
+8. [Algoritmo de pontuação](#algoritmo-de-pontuação)
 
 ---
 
@@ -297,11 +298,18 @@ janela da Unity.
 
 1. **Tela inicial:** levante uma mão acima da cabeça.
 2. **Quantos jogadores?** Pare a mão sobre um botão (2, 3 ou 4) até o anel completar.
-3. **Sorteio do tema** (ex.: *Imite um robô*).
-4. **Mestre:** posicione-se, espere a contagem e crie o movimento (5 s).
-5. **Replay:** todos assistem ao movimento do Mestre.
-6. **Imitadores:** um por vez, repetem o movimento **de memória** (o do Mestre não aparece).
-7. **Resultado da rodada** e, ao final (uma rodada por jogador), **placar final**.
+3. **Como jogar:** cartões com as regras; levante a mão para começar (não aparece no "Jogar novamente").
+4. **Sorteio do tema** (ex.: *Imite um robô*).
+5. **Mestre:** posicione-se, **levante a mão** para começar, espere a contagem e crie o movimento (5 s).
+   A música acelera conforme o tempo acaba e um alarme marca o fim.
+6. **Replay:** todos assistem ao movimento do Mestre.
+7. **Imitadores:** um por vez, em roda a partir do jogador seguinte ao Mestre, levantam a mão e
+   repetem o movimento **de memória** (o do Mestre não aparece). A nota sobe na tela, com confete
+   a partir de 80.
+8. **Resultado da rodada** e, ao final (uma rodada por jogador), **placar final**.
+
+**Pausa:** cruze os braços na frente do peito por ~1 s (fora das gravações). Opções: *Continuar*,
+*Pular jogador* (na tela de posicionamento, para quem saiu da sala) e *Voltar ao menu*.
 
 Cores fixas: Jogador 1 vermelho, 2 verde, 3 amarelo, 4 azul.
 
@@ -312,16 +320,34 @@ das pernas, sem sol ou espelho atrás. O Kinect deve ficar entre 0,6 e 1,8 m do 
 
 | Situação | Ação |
 |---|---|
-| Com Kinect | Mão levantada move o cursor; parar sobre o botão seleciona |
+| Com Kinect | Mão levantada move o cursor (só aparece quando há botões na tela); parar sobre o botão seleciona |
+| Pausa | Braços cruzados no peito por ~1 s · teclado: **P** (e **Esc** na versão final) |
 | Sem Kinect (simulado) | Mouse = mão direita; **Espaço** = as duas mãos para cima; **H** = sair do quadro |
 | Debug (só no Editor) | **Enter** confirma/pula · **Esc** volta ao menu · **F1** mostra/esconde info · **F2** troca a fonte (Auto → Kinect → Simulado) · **2/3/4** na seleção de jogadores |
 
 Menu **Imitações** no editor:
 
 - **Configurar Projeto (reaplicar tudo):** refaz as configurações do projeto.
+- **Play sempre na cena principal** (ligado por padrão): o Play começa pela `Main.unity` mesmo com outra cena aberta, e num clone novo a `Main.unity` é aberta sozinha no lugar da `SampleScene`.
 - **Kinect ▸ Verificar instalação:** mostra se a `Kinect10.dll` foi encontrada.
+- **Versão Final ▸ Gerar versão final (.exe):** gera o jogo em `Builds/Imitacoes/` (veja abaixo).
 - **Criar Cena Principal:** recria a cena do zero (bonecos 3D); existe também a versão com bonecos 2D.
   Isso descarta ajustes feitos à mão na cena.
+
+## Versão final (.exe)
+
+1. Abra o projeto na Unity e use **Imitações ▸ Versão Final ▸ Gerar versão final (.exe)**.
+   O jogo sai em `Builds/Imitacoes/Imitacoes.exe`: Windows 64 bits, tela cheia, sem teclas nem
+   texto de debug e sem a seta do mouse.
+2. Para apresentar em outro PC, copie a pasta `Builds/Imitacoes` **inteira** e instale lá o
+   [Kinect for Windows Runtime 1.8](https://www.microsoft.com/en-us/download/details.aspx?id=40277)
+   (ou o SDK 1.8). Não precisa da Unity.
+3. Para sair do jogo: **Alt+F4**. **Esc** abre a pausa.
+4. Se algo der errado no PC da apresentação, o log fica em
+   `%USERPROFILE%\AppData\LocalLow\Move & Party\Imitações\Player.log`.
+
+**Versão Final ▸ Gerar versão de teste (com debug)** gera a mesma coisa com as teclas de debug
+ligadas (Enter, F1, F2…), útil para ensaiar.
 
 ## Solução de problemas do Kinect
 
